@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leve — biomeccanica degli esercizi</title>
+<meta name="description" content="Simulatore dei bracci di leva e dei momenti articolari negli esercizi fondamentali.">
+<meta name="theme-color" content="#0d1016">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Leve</h1>
+  <nav class="chips" id="exercises" aria-label="Esercizio">
+    <button class="chip on" type="button" data-ex="squat">Squat</button>
+    <button class="chip" type="button" data-ex="dead">Stacchi</button>
+    <button class="chip" type="button" data-ex="thrust">Hip thrust</button>
+    <button class="chip" type="button" data-ex="press">Spinte</button>
+    <button class="chip" type="button" data-ex="pull">Tirate</button>
+  </nav>
+</header>
+
+<main class="layout">
+  <section class="stage" aria-label="Figura">
+    <div class="seg" id="variant" role="group" aria-label="Variante"></div>
+    <div class="figwrap">
+      <div class="seg mini" id="view" role="group" aria-label="Vista" hidden>
+        <button type="button" data-v="side">Lato</button>
+        <button type="button" data-v="front">Fronte</button>
+      </div>
+      <div id="figure"></div>
+    </div>
+    <div class="scrub">
+      <button type="button" id="play" aria-label="Anima la ripetizione">▶</button>
+      <input type="range" id="phase" min="0" max="100" value="100" aria-label="Fase del movimento">
+      <span id="phaseLabel">buca</span>
+    </div>
+    <div class="angles" id="angles"></div>
+    <p class="warn" id="warn" hidden></p>
+  </section>
+
+  <section class="panel">
+    <article class="card">
+      <h2>Momenti articolari</h2>
+      <p class="hint">Tocca un'articolazione per vedere la sua linea di carico. Valori totali dei due arti, in condizioni quasi-statiche.</p>
+      <div id="joints"></div>
+    </article>
+
+    <article class="card">
+      <h2>Tecnica e carico</h2>
+      <div id="technique"></div>
+    </article>
+
+    <article class="card">
+      <h2>Corporatura</h2>
+      <div class="seg" id="sex" role="group" aria-label="Tabelle antropometriche">
+        <button type="button" data-v="M">Uomo</button>
+        <button type="button" data-v="F">Donna</button>
+      </div>
+      <div class="presets" id="presets"></div>
+      <div id="body"></div>
+      <div class="profiles">
+        <select id="profileList" aria-label="Profili salvati"></select>
+        <button type="button" id="profileLoad">Carica</button>
+        <button type="button" id="profileDel">Elimina</button>
+        <button type="button" id="profileSave" class="primary">Salva profilo…</button>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>Muscoli coinvolti</h2>
+      <div id="muscles"></div>
+    </article>
+
+    <article class="card">
+      <h2>Modello e fonti</h2>
+      <div id="sources"></div>
+    </article>
+  </section>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
