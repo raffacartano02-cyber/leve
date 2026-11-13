@@ -3,6 +3,7 @@ import { solveDeadlift, deadConfigFromState, deadDefaults } from './deadlift.js'
 import { solveHipThrust, thrustConfigFromState } from './hipthrust.js';
 import { solveOverhead, solveBench, pressConfigFromState } from './press.js';
 import { solvePullUp, solveLat, solveRow, pullConfigFromState } from './pull.js';
+import { solveDip, dipConfigFromState } from './dip.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -17,6 +18,7 @@ const DEFAULTS = {
   tvar: 'bar', thBench: 40, thKnee: 90,
   pvar: 'ohp', grip: 58, barFront: 8, touch: 12, chest: 16,
   lvar: 'pullup', ballast: 0, latLean: 10, rowLean: 60,
+  dipWidth: 50, dipLean: 20, dipElbow: 90, dipKnee: 80,
   phase: 1, sel: 'hip'
 };
 const BODY_KEYS = ['sex', 'height', 'mass', 'thigh', 'shank', 'trunk', 'arm'];
@@ -189,8 +191,15 @@ const EX = {
 
   press: {
     vkey: 'pvar',
-    variants: [['ohp', 'Military press'], ['bench', 'Panca piana']],
-    tech: s => [
+    variants: [['ohp', 'Military'], ['bench', 'Panca'], ['dip', 'Dip']],
+    tech: s => s.pvar === 'dip' ? [
+      { key: 'ballast', label: 'Zavorra', unit: 'kg', min: 0, max: 100, step: 2.5 },
+      { key: 'dipWidth', label: 'Distanza tra le parallele (tra le mani)', unit: 'cm', min: 35, max: 75, step: 1 },
+      { key: 'dipLean', label: 'Inclinazione del busto in avanti in basso', unit: '°', min: 0, max: 50, step: 1,
+        note: v => v <= 10 ? 'busto verticale' : v >= 30 ? 'busto inclinato' : '' },
+      { key: 'dipElbow', label: 'Profondità (flessione del gomito in basso)', unit: '°', min: 50, max: 120, step: 1 },
+      { key: 'dipKnee', label: 'Flessione delle ginocchia', unit: '°', min: 0, max: 120, step: 1 }
+    ] : [
       LOAD_ROW,
       { key: 'grip', label: 'Larghezza della presa (tra le mani)', unit: 'cm', min: 30, max: 100, step: 1 },
       ...(s.pvar === 'ohp'
@@ -200,18 +209,21 @@ const EX = {
     ],
     bottom: 'in basso', topLabel: 'in alto', hamK: 1, front: true, copLabel: 'centro piede', sel: 'shoulderF',
     aria: 'Figura della spinta vista di lato con bracci di leva',
-    onVariant(v) { state.grip = Math.round((v === 'ohp' ? 0.33 : 0.46) * state.height); },
+    onVariant(v) { if (v !== 'dip') state.grip = Math.round((v === 'ohp' ? 0.33 : 0.46) * state.height); },
     onEnter() { this.onVariant(state.pvar); },
-    solve: s => (s.pvar === 'ohp' ? solveOverhead : solveBench)(pressConfigFromState(s), s.phase),
-    readouts: R => R.angles.lean !== undefined
+    solve: s => s.pvar === 'dip' ? solveDip(dipConfigFromState(s), s.phase)
+      : (s.pvar === 'ohp' ? solveOverhead : solveBench)(pressConfigFromState(s), s.phase),
+    readouts: R => R.readouts ? R.readouts : R.angles.lean !== undefined
       ? [[fmt(R.angles.shoulder) + '°', 'Omero', 'elevazione'], [fmt(R.angles.elbow) + '°', 'Gomito', 'flessione'],
          [fmt(R.angles.lean, 1) + '°', 'Corpo', 'inclinazione'], [fmt(R.rom * 100) + ' cm', 'Corsa', 'del bilanciere']]
       : [[fmt(R.angles.abd) + '°', 'Omero', 'apertura dal busto'], [fmt(R.angles.elbow) + '°', 'Gomito', 'flessione'],
          [fmt(R.rom * 100) + ' cm', 'Corsa', 'del bilanciere']],
     warn: R => !R.reach ? 'Con questa presa e queste misure le braccia non arrivano al bilanciere in questa posizione.'
-      : R.balanced ? '' : 'Posizione non equilibrata: il baricentro non resta sopra il centro del piede.',
+      : R.balanced ? '' : R.loadUp ? 'Con questa inclinazione del busto il baricentro non riesce a stare sopra le mani.'
+      : 'Posizione non equilibrata: il baricentro non resta sopra il centro del piede.',
     muscleHint: 'Momenti calcolati dal modello nella posizione mostrata, totali dei due arti. Sono una richiesta meccanica, non un\'attivazione misurata.',
     muscles: [
+      ['dip', 'Il dip in breve', 'Il corpo è appeso alle mani: le parallele spingono verso l\'alto con tutto il peso, e il baricentro resta sulla loro verticale. Più il busto si inclina in avanti, più le spalle passano davanti alle mani e cresce il braccio di leva dei flessori della spalla (gran pettorale, deltoide anteriore). In basso l\'omero va dietro al busto: è questa estensione della spalla sotto carico che rende il dip impegnativo per la parte anteriore della spalla<sup>6</sup>. Gran pettorale e tricipite sono i muscoli principali, e la loro attività cresce con la fatica senza grandi cambi di tecnica<sup>7</sup>.'],
       ['shoulderF', 'Flessori della spalla', '<b>Deltoide anteriore e capo clavicolare del gran pettorale.</b> Lavorano in proporzione a quanto il bilanciere sta davanti alla spalla (military press) o verso i piedi rispetto alla spalla (panca).'],
       ['shoulderA', 'Abduttori o adduttori orizzontali', '<b>Deltoide medio e sovraspinato nel military press; gran pettorale sternocostale e deltoide anteriore in panca.</b> Il braccio di leva è la distanza laterale tra mano e spalla, visibile nella vista di fronte: cresce con la larghezza della presa. In panca, stringendo la presa l\'attività del gran pettorale sternocostale cala e quella del tricipite aumenta<sup>3</sup>.'],
       ['elbow', 'Estensori del gomito', '<b>Tricipite brachiale.</b> Il momento dipende da quanto la mano è spostata rispetto alla verticale del gomito. Attenzione: nella panca reale le mani spingono anche verso l\'esterno lungo la sbarra, per circa un quarto della forza verticale<sup>5</sup>; il modello considera solo la forza verticale, quindi sottostima il lavoro del tricipite e sovrastima quello di adduzione orizzontale.'],
@@ -222,12 +234,15 @@ const EX = {
       'Il momento alla spalla è scomposto in due: flessione (bilanciere davanti alla spalla, vista di lato) e abduzione o adduzione orizzontale (mano più larga della spalla, vista di fronte). I due arti sono sommati.',
       'Military press: corpo dritto, inclinato dalle caviglie quanto serve per tenere il baricentro sopra il centro del piede; il bilanciere parte dalle clavicole, davanti alle spalle, e arriva sopra le spalle.',
       'Panca: il bilanciere scende sul petto verso i piedi e risale sopra le spalle; panca alta 43 cm; spinta delle gambe e retrazione delle scapole non sono modellate; spessore del torace e arco li regoli con l\'altezza del bilanciere sul petto (16 cm sopra la spalla è una mia stima).',
-      'Il bilanciere esercita solo forza verticale: le forze laterali delle mani sulla sbarra, misurate in panca<sup>5</sup>, non sono considerate.'
+      'Il bilanciere esercita solo forza verticale: le forze laterali delle mani sulla sbarra, misurate in panca<sup>5</sup>, non sono considerate.',
+      'Dip: le parallele reggono tutto il peso (corpo più zavorra); il busto si inclina in avanti scendendo fino all\'angolo scelto, le gambe seguono il busto con le ginocchia flesse e i piedi dietro, e la posizione delle spalle rispetto alle mani è quella che porta il baricentro sulla verticale delle mani. Il gomito punta all\'indietro. Inclinazione del busto, flessione delle ginocchia e profondità iniziali sono stime mie.'
     ],
     sources: [
       'Lehman GJ. The influence of grip width and forearm pronation/supination on upper-body myoelectric activity during the flat bench press. <i>J Strength Cond Res</i>. 2005;19(3):587-591.',
       'Saeterbakken AH, Fimland MS. Effects of body position and loading modality on muscle activity and strength in shoulder presses. <i>J Strength Cond Res</i>. 2013;27(7):1824-1831.',
-      'Duffey MJ, Challis JH. Vertical and lateral forces applied to the bar during the bench press in novice lifters. <i>J Strength Cond Res</i>. 2011;25(9):2442-2447.'
+      'Duffey MJ, Challis JH. Vertical and lateral forces applied to the bar during the bench press in novice lifters. <i>J Strength Cond Res</i>. 2011;25(9):2442-2447.',
+      'McKenzie A, Crowley-McHattan Z, Meir R, Whitting J, Volschenk W. Bench, bar, and ring dips: do kinematics and muscle activity differ? <i>Int J Environ Res Public Health</i>. 2022;19(20):13211.',
+      'McKenzie A, Crowley-McHattan Z, Meir R, Whitting J, Volschenk W. Fatigue increases muscle activations but does not change maximal joint angles during the bar dip. <i>Int J Environ Res Public Health</i>. 2022;19(21):14390.'
     ]
   },
 
@@ -502,7 +517,12 @@ function drawArmsFront(R) {
     o += `<rect x="${Math.min(x0, x1).toFixed(1)}" y="${(yb - 0.225 * S).toFixed(1)}" width="${Math.abs(x1 - x0).toFixed(1)}" height="${(0.45 * S).toFixed(1)}" rx="3" class="f-plate"/>`;
   }
   const half = R.noPlates ? 0.62 : 0.715;
-  o += line({ x: X(-half), y: yb }, { x: X(half), y: yb }, '', 'stroke="var(--accent)" stroke-width="4" stroke-linecap="round"');
+  if (F.parallel) for (const s of [-1, 1]) {
+    // Parallele viste di fronte: la sezione della sbarra e il montante
+    o += `<rect x="${(X(s * F.grip) - 5).toFixed(1)}" y="${(yb - 2).toFixed(1)}" width="10" height="${(440 - yb + 2).toFixed(1)}" rx="3" class="f-prop"/>`;
+    o += `<circle cx="${X(s * F.grip).toFixed(1)}" cy="${yb.toFixed(1)}" r="6" fill="var(--accent)"/>`;
+  }
+  else o += line({ x: X(-half), y: yb }, { x: X(half), y: yb }, '', 'stroke="var(--accent)" stroke-width="4" stroke-linecap="round"');
   o += line({ x: X(-F.shoulder), y: shY }, { x: X(F.shoulder), y: shY }, 'f-bone');
   const thin = 'style="stroke-width:4.5"';
   for (const s of [-1, 1]) {
@@ -595,7 +615,10 @@ function drawMuscles(R) {
   const value = id => legs.includes(id) ? fmt(Math.max(0, by[id].moment) / tot * 100) + ' %' : fmt(Math.max(0, by[id].moment)) + ' N·m';
   $('muscles').innerHTML =
     `<p class="hint">${ex().muscleHint || 'Ripartizione del momento estensorio tra anca, ginocchio e caviglia nella posizione mostrata. È una richiesta meccanica calcolata dal modello, non un\'attivazione misurata.'}</p>` +
-    ex().muscles.filter(([id]) => by[id]).map(([id, t, txt]) => `<div class="mgroup" style="--c:${JOINTS[id].color}"><div class="t"><span>${t}</span><span>${value(id)}</span></div><p>${txt}</p></div>`).join('');
+    ex().muscles.filter(([id]) => by[id] || (id === state.pvar && state.ex === 'press')).map(([id, t, txt]) => {
+      const intro = !by[id];
+      return `<div class="mgroup" style="--c:${intro ? 'var(--accent)' : JOINTS[id].color}"><div class="t"><span>${t}</span><span>${intro ? '' : value(id)}</span></div><p>${txt}</p></div>`;
+    }).join('');
 }
 
 function drawSources() {

@@ -1,4 +1,4 @@
-const CACHE = 'leve-v4';
+const CACHE = 'leve-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,8 @@ const ASSETS = [
   './js/deadlift.js',
   './js/hipthrust.js',
   './js/press.js',
-  './js/pull.js'
+  './js/pull.js',
+  './js/dip.js'
 ];
 
 self.addEventListener('install', e => {
