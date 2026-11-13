@@ -1,4 +1,4 @@
-const CACHE = 'leve-v5';
+const CACHE = 'leve-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -31,7 +31,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request)
+    // no-cache: chiede sempre al server se il file è cambiato, invece di usare la cache HTTP del browser
+    fetch(e.request.url, { cache: 'no-cache' })
       .then(r => {
         const copy = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
